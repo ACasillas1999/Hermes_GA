@@ -90,7 +90,7 @@
         </div>
 
         <div style="margin-top: 12px;">
-            {{ $logs->links() }}
+            {{ $logs->links('components.pagination') }}
         </div>
     </div>
 @endsection

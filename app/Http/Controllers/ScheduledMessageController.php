@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class ScheduledMessageController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $listados = Listado::query()
             ->withCount('empleados')
@@ -24,6 +24,77 @@ class ScheduledMessageController extends Controller
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get();
+
+        // View mode: 'list' or 'calendar'
+        $viewMode = $request->query('view', 'list');
+        
+        // Calendar logic
+        $monthValue = $request->query('month');
+        $selectedDate = $request->query('date');
+        
+        if ($monthValue) {
+            try {
+                $month = Carbon::createFromFormat('Y-m', $monthValue, config('app.timezone'));
+            } catch (\Exception $e) {
+                $month = Carbon::now(config('app.timezone'));
+            }
+        } else {
+            $month = Carbon::now(config('app.timezone'));
+        }
+        
+        $monthStart = $month->copy()->startOfMonth();
+        $monthEnd = $month->copy()->endOfMonth();
+        
+        // Get scheduled messages for the month
+        $monthlyScheduled = ScheduledMessage::query()
+            ->whereBetween('scheduled_at', [$monthStart, $monthEnd])
+            ->get()
+            ->groupBy(function ($item) {
+                return $item->scheduled_at ? $item->scheduled_at->format('Y-m-d') : null;
+            })
+            ->map(fn ($group) => $group->count());
+        
+        // Build calendar weeks
+        $weeks = [];
+        $current = $monthStart->copy()->startOfWeek(Carbon::MONDAY);
+        
+        while ($current->lte($monthEnd->copy()->endOfWeek(Carbon::MONDAY))) {
+            $week = [];
+            for ($i = 0; $i < 7; $i++) {
+                $dateKey = $current->format('Y-m-d');
+                $week[] = [
+                    'date' => $dateKey,
+                    'label' => $current->day,
+                    'inMonth' => $current->month === $month->month,
+                    'count' => $monthlyScheduled->get($dateKey, 0),
+                ];
+                $current->addDay();
+            }
+            $weeks[] = $week;
+        }
+        
+        $calendar = [
+            'monthLabel' => $month->translatedFormat('F Y'),
+            'monthValue' => $month->format('Y-m'),
+            'prevMonth' => $month->copy()->subMonth()->format('Y-m'),
+            'nextMonth' => $month->copy()->addMonth()->format('Y-m'),
+            'weeks' => $weeks,
+        ];
+        
+        // Get messages for selected date
+        $dayScheduled = collect();
+        if ($selectedDate && $viewMode === 'calendar') {
+            try {
+                $date = Carbon::createFromFormat('Y-m-d', $selectedDate, config('app.timezone'));
+                $dayScheduled = ScheduledMessage::query()
+                    ->with(['listado', 'template'])
+                    ->whereDate('scheduled_at', $date)
+                    ->orderBy('scheduled_at')
+                    ->get();
+            } catch (\Exception $e) {
+                // Invalid date format
+            }
+        }
 
         $scheduledMessages = ScheduledMessage::query()
             ->with(['listado', 'template'])
@@ -50,6 +121,10 @@ class ScheduledMessageController extends Controller
             })->values(),
             'scheduledMessages' => $scheduledMessages,
             'timezone' => config('app.timezone'),
+            'viewMode' => $viewMode,
+            'calendar' => $calendar,
+            'selectedDate' => $selectedDate,
+            'dayScheduled' => $dayScheduled,
             'stats' => [
                 'pendientes' => ScheduledMessage::query()
                     ->whereIn('status', ['pending', 'queueing', 'queued'])

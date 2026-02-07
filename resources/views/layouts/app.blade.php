@@ -26,8 +26,9 @@
             --line: #e2e8f0;
             --text: #0f172a;
             --muted: #64748b;
-            --accent: #0ea5e9;
-            --accent-strong: #0284c7;
+            --accent: #FF8C00;
+            --accent-strong: #FF7000;
+            --accent-blue: #0066B3;
             --ok: #16a34a;
             --danger: #dc2626;
             --shadow: 0 16px 32px rgba(15, 23, 42, 0.08);
@@ -41,8 +42,9 @@
             --line: #1f2a44;
             --text: #e2e8f0;
             --muted: #94a3b8;
-            --accent: #38bdf8;
-            --accent-strong: #0ea5e9;
+            --accent: #FFA500;
+            --accent-strong: #FF8C00;
+            --accent-blue: #0088DD;
             --ok: #22c55e;
             --danger: #ef4444;
             --shadow: 0 20px 45px rgba(15, 23, 42, 0.4);
@@ -134,8 +136,8 @@
 
         .nav a.active,
         .nav a:hover {
-            background: rgba(56, 189, 248, 0.12);
-            border-color: rgba(56, 189, 248, 0.35);
+            background: rgba(255, 140, 0, 0.12);
+            border-color: rgba(255, 140, 0, 0.35);
         }
 
         .nav svg {
@@ -293,6 +295,27 @@
             border: 1px solid rgba(239, 68, 68, 0.4);
         }
 
+        .button-active {
+            color: #02131f;
+            background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+            border: 1px solid transparent;
+        }
+
+        .button[disabled],
+        .button.is-disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
         .table {
             width: 100%;
             border-collapse: collapse;
@@ -315,9 +338,9 @@
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: rgba(56, 189, 248, 0.12);
+            background: rgba(255, 140, 0, 0.12);
             color: var(--text);
-            border: 1px solid rgba(56, 189, 248, 0.35);
+            border: 1px solid rgba(255, 140, 0, 0.35);
             border-radius: 999px;
             padding: 4px 10px;
             font-size: 11px;
@@ -344,6 +367,36 @@
                 height: auto;
                 position: relative;
             }
+        }
+
+        /* Divine Gradient Styles */
+        .divine-gradient {
+            background: linear-gradient(135deg, #0066B3 0%, #FF8C00 100%);
+        }
+
+        .divine-gradient-header {
+            background: linear-gradient(90deg, #0066B3 0%, #FF8C00 100%);
+        }
+
+        .orange-glow {
+            box-shadow: 0 0 20px rgba(255, 140, 0, 0.2);
+        }
+
+        .card-accent {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-accent::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255, 140, 0, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
         }
     </style>
     @stack('styles')

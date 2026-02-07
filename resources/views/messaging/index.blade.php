@@ -22,6 +22,24 @@
     .stat-card {
         display: grid;
         gap: 6px;
+        position: relative;
+    }
+
+    .stat-card.featured {
+        border-color: rgba(255, 140, 0, 0.3);
+        box-shadow: 0 0 20px rgba(255, 140, 0, 0.15);
+    }
+
+    .stat-card.featured::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 80px;
+        height: 80px;
+        background: radial-gradient(circle, rgba(255, 140, 0, 0.08) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
     }
 
     .stat-label {
@@ -29,11 +47,15 @@
         font-size: 11px;
         text-transform: uppercase;
         letter-spacing: 0.8px;
+        position: relative;
+        z-index: 1;
     }
 
     .stat-value {
-        font-size: 20px;
+        font-size: 24px;
         font-weight: 700;
+        position: relative;
+        z-index: 1;
     }
 
     .mini-table {
@@ -58,8 +80,8 @@
         padding: 2px 8px;
         border-radius: 999px;
         font-size: 11px;
-        border: 1px solid rgba(56, 189, 248, 0.35);
-        background: rgba(56, 189, 248, 0.12);
+        border: 1px solid rgba(255, 140, 0, 0.35);
+        background: rgba(255, 140, 0, 0.12);
     }
 
     .error-text {
@@ -140,7 +162,7 @@
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        border: 3px solid rgba(56, 189, 248, 0.25);
+        border: 3px solid rgba(255, 140, 0, 0.25);
         border-top-color: var(--accent);
         margin: 0 auto 16px;
         animation: spin 1s linear infinite;
@@ -156,7 +178,7 @@
 
 @section('content')
     <div class="stats-grid">
-        <div class="card stat-card">
+        <div class="card stat-card featured">
             <div class="stat-label">Plantillas</div>
             <div class="stat-value">{{ $stats['plantillas'] }}</div>
             <div class="muted">Registradas en Meta</div>

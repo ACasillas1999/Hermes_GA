@@ -1,136 +1,268 @@
 @extends('layouts.app')
 
 @section('title', 'Dashboard')
-@section('subtitle', 'Resumen general de mensajeria')
+@section('subtitle', 'Resumen general de mensajería')
 
 @push('styles')
 <style>
+    /* Override base styles with Divine design */
+    body {
+        background: #060b18 !important;
+    }
+
+    .content {
+        background: #060b18;
+    }
+
+    .page-header {
+        background: rgba(10, 16, 31, 0.5);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+
+
     .stats-grid {
         display: grid;
-        gap: 16px;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        margin-bottom: 20px;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 40px;
     }
 
     .stat-card {
-        display: grid;
-        gap: 8px;
+        background: #0e1629;
+        border: 1px solid rgba(255, 140, 0, 0.2);
+        border-radius: 16px;
+        padding: 24px;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+        border-color: rgba(255, 140, 0, 0.4);
+    }
+
+    .stat-card.featured {
+        border-color: rgba(255, 140, 0, 0.3);
+        box-shadow: 0 0 20px rgba(255, 140, 0, 0.15);
+    }
+
+    .stat-card.featured::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 100px;
+        height: 100px;
+        background: radial-gradient(circle, rgba(255, 140, 0, 0.08) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
     }
 
     .stat-label {
-        color: var(--muted);
-        font-size: 12px;
+        color: #94a3b8;
+        font-size: 11px;
         text-transform: uppercase;
-        letter-spacing: 1px;
+        letter-spacing: 1.5px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        position: relative;
+        z-index: 1;
     }
 
     .stat-value {
-        font-size: 28px;
+        font-size: 36px;
         font-weight: 700;
+        color: white;
+        position: relative;
+        z-index: 1;
     }
 
-    .calendar {
-        display: grid;
-        gap: 8px;
+    .stat-meta {
+        color: #94a3b8;
+        font-size: 13px;
+        margin-top: 8px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .calendar-card {
+        background: #0e1629;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
     }
 
     .calendar-header {
+        background: linear-gradient(90deg, #0066B3 0%, #FF8C00 100%);
+        padding: 24px 32px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .calendar-header h4 {
+        font-size: 20px;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+    }
+
+    .calendar-month-badge {
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        border-radius: 999px;
+        backdrop-filter: blur(8px);
+    }
+
+    .calendar-nav {
+        display: flex;
+        gap: 8px;
+    }
+
+    .calendar-nav button,
+    .calendar-nav a {
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .calendar-nav button:hover,
+    .calendar-nav a:hover {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .calendar-body {
+        background: #0a101f;
+        padding: 0;
     }
 
     .calendar-grid {
         display: grid;
-        grid-template-columns: repeat(7, minmax(0, 1fr));
-        gap: 6px;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 0;
     }
 
-    .calendar-cell {
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 10px;
-        padding: 8px;
-        min-height: 64px;
-        display: grid;
-        gap: 6px;
-        background: rgba(15, 23, 42, 0.4);
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .calendar-cell.dim {
-        opacity: 0.45;
-    }
-
-    .calendar-cell.active {
-        border-color: rgba(56, 189, 248, 0.6);
-        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.25);
+    .calendar-weekday {
+        padding: 16px;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #64748b;
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .calendar-day {
-        font-size: 12px;
-        font-weight: 600;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        padding: 16px;
+        min-height: 100px;
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
     }
 
-    .calendar-count {
-        font-size: 11px;
-        color: var(--muted);
+    .calendar-day:hover {
+        background: rgba(255, 255, 255, 0.02);
     }
 
-    .weekday {
-        font-size: 11px;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        text-align: center;
+    .calendar-day.dim {
+        opacity: 0.3;
+    }
+
+    .calendar-day.active {
+        background: rgba(255, 140, 0, 0.05);
+        border-color: rgba(255, 140, 0, 0.3);
+    }
+
+    .calendar-day-number {
+        font-size: 14px;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 8px;
+    }
+
+    .calendar-day-count {
+        font-size: 10px;
+        color: #64748b;
+    }
+
+    .calendar-day.has-events .calendar-day-number {
+        color: #FF9900;
+    }
+
+    .calendar-day.has-events .calendar-day-count {
+        color: #FF9900;
+        font-weight: 700;
     }
 
     .tabbar {
         display: flex;
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
     .tab {
-        padding: 8px 12px;
+        padding: 10px 20px;
         border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.1);
         background: rgba(15, 23, 42, 0.4);
-        font-size: 12px;
+        font-size: 13px;
+        font-weight: 600;
         text-decoration: none;
-        color: var(--text);
+        color: #e2e8f0;
+        transition: all 0.2s;
     }
 
     .tab.active {
-        border-color: rgba(56, 189, 248, 0.6);
-        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2);
-        background: rgba(56, 189, 248, 0.12);
+        border-color: rgba(255, 140, 0, 0.6);
+        box-shadow: 0 0 0 1px rgba(255, 140, 0, 0.2);
+        background: rgba(255, 140, 0, 0.12);
+        color: white;
     }
 </style>
 @endpush
 
 @section('content')
     <div class="stats-grid">
-        <div class="card stat-card">
+        <div class="stat-card featured">
             <div class="stat-label">Plantillas</div>
             <div class="stat-value">{{ $stats['plantillas'] }}</div>
-            <div class="muted">Registradas en Meta</div>
+            <div class="stat-meta">Registradas en Meta</div>
         </div>
-        <div class="card stat-card">
+        <div class="stat-card">
             <div class="stat-label">Listados</div>
             <div class="stat-value">{{ $stats['listados'] }}</div>
-            <div class="muted">Grupos disponibles</div>
+            <div class="stat-meta">Grupos disponibles</div>
         </div>
-        <div class="card stat-card">
+        <div class="stat-card">
             <div class="stat-label">Personas</div>
             <div class="stat-value">{{ $stats['empleados'] }}</div>
-            <div class="muted">Contactos cargados</div>
+            <div class="stat-meta">Contactos cargados</div>
         </div>
-        <div class="card stat-card">
+        <div class="stat-card">
             <div class="stat-label">Mensajes</div>
             <div class="stat-value">{{ $stats['mensajes'] }}</div>
-            <div class="muted">Registros enviados</div>
+            <div class="stat-meta">Registros enviados</div>
         </div>
     </div>
 
@@ -140,14 +272,14 @@
     </div>
 
     @if ($viewMode === 'history')
-        <section class="card">
-            <div class="row-inline" style="justify-content: space-between;">
-                <h2>Historial reciente</h2>
-                <a class="button button-secondary" href="{{ route('history.index') }}">Ver historial completo</a>
+        <section class="calendar-card">
+            <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center;">
+                <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">Historial reciente</h2>
+                <a class="button" href="{{ route('history.index') }}" style="background: rgba(255, 140, 0, 0.12); border: 1px solid rgba(255, 140, 0, 0.3); color: white;">Ver historial completo</a>
             </div>
             <div style="overflow-x: auto;">
                 <table class="table">
-                    <thead>
+                    <thead style="background: rgba(255, 255, 255, 0.02);">
                         <tr>
                             <th>Fecha</th>
                             <th>Persona</th>
@@ -159,7 +291,7 @@
                     </thead>
                     <tbody>
                         @forelse ($recentMessages as $log)
-                            <tr>
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                                 <td>{{ optional($log->sent_at)->format('Y-m-d H:i') ?? $log->created_at->format('Y-m-d H:i') }}</td>
                                 <td>{{ $log->empleado?->Nombre ?? 'Sin nombre' }}</td>
                                 <td>{{ $log->empleado?->listado?->nombre ?? 'N/A' }}</td>
@@ -186,31 +318,33 @@
             </div>
         </section>
     @else
-        <section class="card">
-            <div class="calendar">
-                <div class="calendar-header">
-                    <div>
-                        <h2 style="margin:0;">Calendario de envios</h2>
-                        <div class="muted">{{ $calendar['monthLabel'] }}</div>
-                    </div>
-                    <div class="row-inline">
-                        <a class="button button-secondary" href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['prevMonth']]) }}">Anterior</a>
-                        <a class="button button-secondary" href="{{ route('dashboard', ['view' => 'calendar']) }}">Hoy</a>
-                        <a class="button button-secondary" href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['nextMonth']]) }}">Siguiente</a>
-                    </div>
+        <section class="calendar-card">
+            <div class="calendar-header">
+                <div style="display: flex; align-items: center; gap: 16px;">
+                    <h4>Calendario de Envíos</h4>
+                    <span class="calendar-month-badge">{{ $calendar['monthLabel'] }}</span>
                 </div>
-                <div class="calendar-grid" style="margin-top: 8px;">
-                    @foreach (['Lun','Mar','Mie','Jue','Vie','Sab','Dom'] as $dayName)
-                        <div class="weekday">{{ $dayName }}</div>
+                <div class="calendar-nav">
+                    <a href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['prevMonth']]) }}">← Anterior</a>
+                    <a href="{{ route('dashboard', ['view' => 'calendar']) }}">Hoy</a>
+                    <a href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['nextMonth']]) }}">Siguiente →</a>
+                </div>
+            </div>
+            <div class="calendar-body">
+                <div class="calendar-grid">
+                    @foreach (['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'] as $dayName)
+                        <div class="calendar-weekday">{{ $dayName }}</div>
                     @endforeach
+                </div>
+                <div class="calendar-grid">
                     @foreach ($calendar['weeks'] as $week)
                         @foreach ($week as $day)
                             <a
-                                class="calendar-cell {{ $day['inMonth'] ? '' : 'dim' }} {{ $selectedDate === $day['date'] ? 'active' : '' }}"
+                                class="calendar-day {{ $day['inMonth'] ? '' : 'dim' }} {{ $selectedDate === $day['date'] ? 'active' : '' }} {{ $day['count'] > 0 ? 'has-events' : '' }}"
                                 href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['monthValue'], 'date' => $day['date']]) }}"
                             >
-                                <div class="calendar-day">{{ $day['label'] }}</div>
-                                <div class="calendar-count">{{ $day['count'] }} envios</div>
+                                <div class="calendar-day-number">{{ $day['label'] }}</div>
+                                <div class="calendar-day-count">{{ $day['count'] }} envíos</div>
                             </a>
                         @endforeach
                     @endforeach
@@ -219,18 +353,18 @@
         </section>
 
         @if ($selectedDate)
-            <section class="card" style="margin-top: 14px;">
-                <div class="row-inline" style="justify-content: space-between;">
-                    <h2>Detalle del {{ $selectedDate }}</h2>
+            <section class="calendar-card" style="margin-top: 24px;">
+                <div style="padding: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: flex; justify-content: space-between; align-items: center;">
+                    <h2 style="margin: 0; font-size: 18px; font-weight: 700; color: white;">Detalle del {{ $selectedDate }}</h2>
                     <a class="button button-secondary" href="{{ route('dashboard', ['view' => 'calendar', 'month' => $calendar['monthValue']]) }}">Cerrar detalle</a>
                 </div>
-                <div style="overflow-x: auto; margin-top: 8px;">
+                <div style="overflow-x: auto;">
                     <table class="table">
-                        <thead>
+                        <thead style="background: rgba(255, 255, 255, 0.02);">
                             <tr>
                                 <th>Hora</th>
                                 <th>Persona</th>
-                                <th>Telefono</th>
+                                <th>Teléfono</th>
                                 <th>Listado</th>
                                 <th>Plantilla</th>
                                 <th>Estado</th>
@@ -239,7 +373,7 @@
                         </thead>
                         <tbody>
                             @forelse ($dayLogs as $log)
-                                <tr>
+                                <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                                     <td>{{ optional($log->sent_at)->format('H:i') ?? $log->created_at->format('H:i') }}</td>
                                     <td>{{ $log->empleado?->Nombre ?? 'Sin nombre' }}</td>
                                     <td>{{ $log->empleado?->Numero ?? 'N/A' }}</td>
@@ -259,7 +393,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7">No hay envios en este dia.</td>
+                                    <td colspan="7">No hay envíos en este día.</td>
                                 </tr>
                             @endforelse
                         </tbody>

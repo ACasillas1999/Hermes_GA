@@ -20,6 +20,8 @@
         align-items: center;
         justify-content: center;
         z-index: 80;
+        padding: 24px 16px;
+        overflow-y: auto;
     }
 
     .modal-overlay.hidden {
@@ -31,7 +33,9 @@
         border: 1px solid var(--line);
         border-radius: 16px;
         padding: 24px;
-        width: min(520px, 92vw);
+        width: min(520px, 94vw);
+        max-height: calc(100vh - 48px);
+        overflow: auto;
         box-shadow: 0 24px 50px rgba(0, 0, 0, 0.4);
     }
 
@@ -41,6 +45,10 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 12px;
+    }
+
+    body.modal-open {
+        overflow: hidden;
     }
 </style>
 @endpush
@@ -102,11 +110,11 @@
         </div>
 
         <div style="margin-top: 12px;">
-            {{ $empleados->links() }}
+            {{ $empleados->links('components.pagination') }}
         </div>
     </div>
 
-    <div class="modal-overlay hidden" id="modal-persona">
+    <div class="modal-overlay hidden" id="modal-persona" role="dialog" aria-modal="true">
         <div class="modal-card">
             <div class="modal-header">
                 <h2 style="margin: 0;">Agregar persona</h2>
@@ -135,19 +143,29 @@
     const modal = document.getElementById('modal-persona');
     const openBtn = document.querySelector('[data-open-modal]');
     const closeBtn = document.querySelector('[data-close-modal]');
+    const nameInput = document.getElementById('modal-nombre');
 
     function openModal() {
         modal.classList.remove('hidden');
+        document.body.classList.add('modal-open');
+        setTimeout(() => nameInput?.focus(), 0);
     }
 
     function closeModal() {
         modal.classList.add('hidden');
+        document.body.classList.remove('modal-open');
     }
 
     openBtn?.addEventListener('click', openModal);
     closeBtn?.addEventListener('click', closeModal);
     modal?.addEventListener('click', (event) => {
         if (event.target === modal) {
+            closeModal();
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
             closeModal();
         }
     });

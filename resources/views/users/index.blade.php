@@ -46,7 +46,7 @@
         </div>
 
         <div style="margin-top: 12px;">
-            {{ $users->links() }}
+            {{ $users->links('components.pagination') }}
         </div>
     </div>
 @endsection
