@@ -5,7 +5,8 @@
 
 @section('header-actions')
     <div class="row-inline">
-        <button class="button" type="button" data-open-modal>Agregar persona</button>
+        <button class="button" type="button" data-open-modal="modal-import">Importar CSV</button>
+        <button class="button" type="button" data-open-modal="modal-persona">Agregar persona</button>
         <a class="button button-secondary" href="{{ route('listados.index') }}">Volver</a>
     </div>
 @endsection
@@ -73,6 +74,7 @@
                     <tr>
                         <th>Nombre</th>
                         <th>Numero</th>
+                        <th>Correo</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -84,6 +86,9 @@
                             </td>
                             <td>
                                 <input type="text" name="numero" value="{{ $empleado->Numero }}" form="update-{{ $empleado->ID }}" required>
+                            </td>
+                            <td>
+                                <input type="email" name="correo" value="{{ $empleado->Correo }}" form="update-{{ $empleado->ID }}">
                             </td>
                             <td>
                                 <div class="row-inline">
@@ -102,7 +107,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3">No hay personas en este listado.</td>
+                            <td colspan="4">No hay personas en este listado.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -130,8 +135,32 @@
                     <label for="modal-numero">Numero</label>
                     <input id="modal-numero" type="text" name="numero" value="{{ old('numero') }}" required>
                 </div>
+                <div class="row">
+                    <label for="modal-correo">Correo (opcional)</label>
+                    <input id="modal-correo" type="email" name="correo" value="{{ old('correo') }}">
+                </div>
                 <div class="row-inline">
                     <button class="button" type="submit">Agregar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="modal-import" role="dialog" aria-modal="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 style="margin: 0;">Importar CSV</h2>
+                <button class="button button-secondary" type="button" data-close-modal="modal-import">Cerrar</button>
+            </div>
+            <form method="POST" action="{{ route('listados.empleados.import', $listado) }}" enctype="multipart/form-data">
+                @csrf
+                <div class="row">
+                    <p class="muted" style="margin-top: 0;">El archivo CSV puede tener las columnas Nombre, Numero, Correo.</p>
+                    <label for="csv_file">Archivo CSV</label>
+                    <input id="csv_file" type="file" name="csv_file" accept=".csv" required style="padding: 10px; border: 1px dashed var(--line); border-radius: 8px; cursor: pointer;">
+                </div>
+                <div class="row-inline" style="margin-top: 16px;">
+                    <button class="button" type="submit">Subir e Importar</button>
                 </div>
             </form>
         </div>
@@ -140,33 +169,56 @@
 
 @push('scripts')
 <script>
-    const modal = document.getElementById('modal-persona');
-    const openBtn = document.querySelector('[data-open-modal]');
-    const closeBtn = document.querySelector('[data-close-modal]');
-    const nameInput = document.getElementById('modal-nombre');
+    const modals = {
+        'modal-persona': document.getElementById('modal-persona'),
+        'modal-import': document.getElementById('modal-import')
+    };
 
-    function openModal() {
-        modal.classList.remove('hidden');
+    function openModal(id) {
+        const m = modals[id];
+        if (!m) return;
+        m.classList.remove('hidden');
         document.body.classList.add('modal-open');
-        setTimeout(() => nameInput?.focus(), 0);
+        if (id === 'modal-persona') {
+            setTimeout(() => document.getElementById('modal-nombre')?.focus(), 0);
+        }
     }
 
-    function closeModal() {
-        modal.classList.add('hidden');
+    function closeModal(id) {
+        const m = modals[id];
+        if (!m) return;
+        m.classList.add('hidden');
         document.body.classList.remove('modal-open');
     }
 
-    openBtn?.addEventListener('click', openModal);
-    closeBtn?.addEventListener('click', closeModal);
-    modal?.addEventListener('click', (event) => {
-        if (event.target === modal) {
-            closeModal();
-        }
+    document.querySelectorAll('[data-open-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            openModal(btn.dataset.openModal);
+        });
+    });
+
+    document.querySelectorAll('[data-close-modal]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            closeModal(btn.dataset.closeModal || btn.closest('.modal-overlay').id);
+        });
+    });
+
+    Object.values(modals).forEach(m => {
+        if (!m) return;
+        m.addEventListener('click', (event) => {
+            if (event.target === m) {
+                closeModal(m.id);
+            }
+        });
     });
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
+        if (event.key === 'Escape') {
+            Object.values(modals).forEach(m => {
+                if (m && !m.classList.contains('hidden')) {
+                    closeModal(m.id);
+                }
+            });
         }
     });
 </script>

@@ -7,8 +7,10 @@ use App\Jobs\SendTemplateMessage;
 use App\Models\Listado;
 use App\Models\MessageLog;
 use App\Models\WabaTemplate;
+use App\Models\EmailTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
+use App\Jobs\SendEmailMessage;
 
 class MessagingController extends Controller
 {
@@ -23,6 +25,10 @@ class MessagingController extends Controller
         $templates = WabaTemplate::query()
             ->orderByDesc('created_at')
             ->orderByDesc('id')
+            ->get();
+
+        $emailTemplates = EmailTemplate::query()
+            ->orderByDesc('created_at')
             ->get();
 
         $recentMessages = MessageLog::query()
@@ -49,6 +55,15 @@ class MessagingController extends Controller
                     'headerRequiresMedia' => $template->headerRequiresMedia(),
                 ];
             })->values(),
+            'emailTemplates' => $emailTemplates,
+            'emailTemplatesForJs' => $emailTemplates->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'subject' => $t->subject,
+                    'html_body' => $t->html_body,
+                    'variables' => $t->variables,
+                ];
+            })->values(),
             'batchId' => $batchId,
             'stats' => [
                 'plantillas' => $templates->count(),
@@ -63,8 +78,15 @@ class MessagingController extends Controller
     public function send(Request $request)
     {
         $validated = $request->validate([
+            'send_type' => ['required', 'in:whatsapp,email'],
             'listado_id' => ['required', 'integer', 'exists:listados,id'],
-            'template_id' => ['required', 'integer', 'exists:waba_templates,id'],
+            'template_id' => ['required_if:send_type,whatsapp', 'nullable', 'integer', 'exists:waba_templates,id'],
+            'email_template_id' => ['required_if:send_type,email', 'nullable', 'integer', 'exists:email_templates,id'],
+            'email_subject' => ['nullable', 'string', 'max:255'],
+            'email_from_address' => ['nullable', 'email', 'max:255'],
+            'email_from_name' => ['nullable', 'string', 'max:255'],
+            'email_params' => ['array'],
+            'email_params.*' => ['nullable', 'string', 'max:1024'],
             'body_params' => ['array'],
             'body_params.*' => ['nullable', 'string', 'max:1024'],
             'header_media_url' => ['nullable', 'url', 'max:2048'],
@@ -72,8 +94,55 @@ class MessagingController extends Controller
             'header_text_params.*' => ['nullable', 'string', 'max:1024'],
         ]);
 
-        $template = WabaTemplate::findOrFail($validated['template_id']);
         $listado = Listado::findOrFail($validated['listado_id']);
+
+        $empleados = Empleado::query()
+            ->where('listado_id', $listado->id)
+            ->get(['ID', 'Nombre', 'Numero', 'Correo']);
+
+        if ($empleados->isEmpty()) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'listado_id' => 'No hay empleados en ese listado.',
+                ]);
+        }
+
+        if ($validated['send_type'] === 'email') {
+            $template = EmailTemplate::findOrFail($validated['email_template_id']);
+            $empleadosConCorreo = $empleados->filter(fn($e) => !empty($e->Correo));
+            
+            if ($empleadosConCorreo->isEmpty()) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'listado_id' => 'No hay empleados con correo electrónico en ese listado.',
+                    ]);
+            }
+            
+            $jobs = $empleadosConCorreo->map(function ($empleado) use ($template, $validated) {
+                return new SendEmailMessage(
+                    $empleado->ID,
+                    $empleado->Correo,
+                    $template->id,
+                    $validated['email_subject'] ?? null,
+                    $validated['email_from_address'] ?? null,
+                    $validated['email_from_name'] ?? null,
+                    $validated['email_params'] ?? []
+                );
+            })->all();
+
+            $batch = Bus::batch($jobs)
+                ->name('Envio correo: '.$template->name)
+                ->allowFailures()
+                ->dispatch();
+
+            return redirect()
+                ->route('messaging.index', ['batch' => $batch->id])
+                ->with('status', 'Envio de correos en proceso. Puedes monitorear el progreso.');
+        }
+
+        $template = WabaTemplate::findOrFail($validated['template_id']);
         $bodyParams = array_values(array_filter(
             $validated['body_params'] ?? [],
             fn ($value) => $value !== null && $value !== ''
@@ -111,18 +180,6 @@ class MessagingController extends Controller
                 ->withInput()
                 ->withErrors([
                     'body_params' => "La plantilla requiere {$requiredCount} parametro(s).",
-                ]);
-        }
-
-        $empleados = Empleado::query()
-            ->where('listado_id', $listado->id)
-            ->get(['ID', 'Nombre', 'Numero']);
-
-        if ($empleados->isEmpty()) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'listado_id' => 'No hay empleados en ese listado.',
                 ]);
         }
 

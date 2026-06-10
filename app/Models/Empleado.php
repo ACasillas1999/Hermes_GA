@@ -14,6 +14,7 @@ class Empleado extends Model
         'Puesto',
         'Nombre',
         'Numero',
+        'Correo',
         'listado_id',
     ];
 

@@ -218,6 +218,14 @@
             <form id="send-form" method="POST" action="{{ route('messages.send') }}">
                 @csrf
                 <div class="row">
+                    <label for="send_type">Tipo de envío</label>
+                    <select id="send_type" name="send_type" required>
+                        <option value="whatsapp" @selected(old('send_type') == 'whatsapp')>WhatsApp</option>
+                        <option value="email" @selected(old('send_type') == 'email')>Correo Electrónico</option>
+                    </select>
+                </div>
+
+                <div class="row">
                     <label for="listado_id">Listado</label>
                     <select id="listado_id" name="listado_id" required>
                         <option value="">Selecciona un listado</option>
@@ -229,10 +237,10 @@
                     </select>
                 </div>
 
-                <div class="row">
-                    <label for="template_id">Plantilla</label>
-                    <select id="template_id" name="template_id" required>
-                        <option value="">Selecciona una plantilla</option>
+                <div class="row" id="whatsapp_template_section">
+                    <label for="template_id">Plantilla WABA</label>
+                    <select id="template_id" name="template_id">
+                        <option value="">Selecciona una plantilla de WhatsApp</option>
                         @foreach ($templates as $template)
                             <option value="{{ $template->id }}" @selected(old('template_id') == $template->id)>
                                 {{ $template->name }} ({{ $template->language }}) - {{ $template->status }}@if($template->headerFormat()) | Header: {{ strtoupper($template->headerFormat()) }}@endif
@@ -241,21 +249,64 @@
                     </select>
                 </div>
 
-                <div class="row">
-                    <label>Encabezado</label>
-                    <div id="header-preview" class="template-preview">Esta plantilla no requiere encabezado.</div>
-                    <div id="header-params" class="param-list"></div>
+                <div class="row" id="email_template_section" style="display: none;">
+                    <label for="email_template_id">Plantilla de Correo</label>
+                    <select id="email_template_id" name="email_template_id">
+                        <option value="">Selecciona una plantilla de correo</option>
+                        @foreach ($emailTemplates as $et)
+                            <option value="{{ $et->id }}" @selected(old('email_template_id') == $et->id)>
+                                {{ $et->name }} (Asunto: {{ $et->subject ?: 'Sin asunto' }})
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="row">
-                    <label>Preview</label>
-                    <div id="template-preview" class="template-preview">Selecciona una plantilla para ver el contenido.</div>
+                <div class="row" id="email_subject_section" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px;">
+                        <div>
+                            <label for="email_from_name">Nombre del remitente</label>
+                            <input type="text" id="email_from_name" name="email_from_name" value="{{ old('email_from_name', env('MAIL_FROM_NAME', 'Hermes GA')) }}" placeholder="Tu Empresa">
+                        </div>
+                        <div>
+                            <label for="email_from_address">Correo del remitente</label>
+                            <input type="email" id="email_from_address" name="email_from_address" value="{{ old('email_from_address', env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev')) }}" placeholder="ventas@tuempresa.com">
+                        </div>
+                    </div>
+                    
+                    <label for="email_subject">Asunto del correo (opcional si la plantilla ya lo tiene)</label>
+                    <input type="text" id="email_subject" name="email_subject" value="{{ old('email_subject') }}" placeholder="Escribe el asunto del correo aquí...">
                 </div>
 
-                <div class="row">
-                    <label>Parametros</label>
-                    <div id="template-params" class="param-list"></div>
-                    <div class="muted">Si la plantilla no tiene variables, no se requiere nada.</div>
+                <div id="waba_params_section">
+                    <div class="row">
+                        <label>Encabezado</label>
+                        <div id="header-preview" class="template-preview">Esta plantilla no requiere encabezado.</div>
+                        <div id="header-params" class="param-list"></div>
+                    </div>
+
+                    <div class="row">
+                        <label>Preview</label>
+                        <div id="template-preview" class="template-preview">Selecciona una plantilla para ver el contenido.</div>
+                    </div>
+
+                    <div class="row">
+                        <label>Parametros</label>
+                        <div id="template-params" class="param-list"></div>
+                        <div class="muted">Si la plantilla no tiene variables, no se requiere nada.</div>
+                    </div>
+                </div>
+
+                <div id="email_preview_section" style="display: none;">
+                    <div class="row">
+                        <label>Preview de Correo</label>
+                        <div id="email-preview-box" class="template-preview">Selecciona una plantilla de correo para verla aquí.</div>
+                    </div>
+                </div>
+
+                <div class="row" id="email_params_section" style="display: none;">
+                    <label>Variables de la Plantilla de Correo</label>
+                    <div id="email-params" class="param-list"></div>
+                    <div class="muted">Si la plantilla no tiene variables (como @{{{nombre}}}), no aparecerá nada aquí.</div>
                 </div>
 
                 <div class="row-inline">
@@ -287,7 +338,7 @@
                                 <td>{{ optional($log->sent_at)->format('m-d H:i') ?? $log->created_at->format('m-d H:i') }}</td>
                                 <td>{{ $log->empleado?->Nombre ?? 'Sin nombre' }}</td>
                                 <td>{{ $log->empleado?->listado?->nombre ?? 'N/A' }}</td>
-                                <td>{{ $log->template_name }} ({{ $log->template_language ?? 'N/A' }})</td>
+                                <td>{{ $log->template_name }} @if($log->template_language) ({{ $log->template_language }}) @endif</td>
                                 <td><span class="pill">{{ $log->status }}</span></td>
                                 <td>
                                     @php
@@ -330,6 +381,8 @@
 @push('scripts')
 <script>
     const templates = @json($templatesForJs);
+    const emailTemplates = @json($emailTemplates);
+    const emailTemplatesForJs = @json($emailTemplatesForJs);
     const batchId = @json($batchId);
 
     const templateSelect = document.getElementById('template_id');
@@ -347,6 +400,78 @@
     const overlayFill = document.getElementById('overlay-progress-fill');
     const overlayText = document.getElementById('overlay-progress-text');
     const overlayDetail = document.getElementById('overlay-progress-detail');
+
+    const sendTypeSelect = document.getElementById('send_type');
+    const wabaSection = document.getElementById('whatsapp_template_section');
+    const emailSection = document.getElementById('email_template_section');
+    const emailSubjectSection = document.getElementById('email_subject_section');
+    const wabaParams = document.getElementById('waba_params_section');
+    const emailPreviewSection = document.getElementById('email_preview_section');
+    const emailTemplateSelect = document.getElementById('email_template_id');
+    const emailPreviewBox = document.getElementById('email-preview-box');
+
+    const emailParamsSection = document.getElementById('email_params_section');
+    const emailParamsEl = document.getElementById('email-params');
+
+    function toggleSendType() {
+        if (sendTypeSelect.value === 'email') {
+            wabaSection.style.display = 'none';
+            wabaParams.style.display = 'none';
+            emailSection.style.display = 'block';
+            emailSubjectSection.style.display = 'block';
+            emailPreviewSection.style.display = 'block';
+            emailParamsSection.style.display = 'block';
+            templateSelect.required = false;
+            emailTemplateSelect.required = true;
+        } else {
+            wabaSection.style.display = 'block';
+            wabaParams.style.display = 'block';
+            emailSection.style.display = 'none';
+            emailSubjectSection.style.display = 'none';
+            emailPreviewSection.style.display = 'none';
+            emailParamsSection.style.display = 'none';
+            templateSelect.required = true;
+            emailTemplateSelect.required = false;
+        }
+    }
+
+    sendTypeSelect.addEventListener('change', toggleSendType);
+    toggleSendType();
+
+    function updateEmailPreview() {
+        const selectedId = emailTemplateSelect.value;
+        const template = emailTemplatesForJs.find(t => String(t.id) === String(selectedId));
+        if (!template) {
+            emailPreviewBox.innerHTML = 'Selecciona una plantilla de correo para verla aquí.';
+            emailParamsEl.innerHTML = '';
+            return;
+        }
+        emailPreviewBox.innerHTML = `<strong>Asunto:</strong> ${template.subject}<hr style="border:0; border-bottom: 1px solid var(--line); margin: 8px 0;" />` + template.html_body;
+        
+        emailParamsEl.innerHTML = '';
+        if (template.variables && template.variables.length > 0) {
+            template.variables.forEach(variable => {
+                const wrapper = document.createElement('div');
+                const label = document.createElement('label');
+                label.textContent = 'Valor para {{' + variable + '}}';
+                label.style.marginBottom = '4px';
+                label.style.display = 'block';
+
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.name = `email_params[${variable}]`;
+                input.placeholder = `Escribe el valor para ${variable}`;
+                input.required = true;
+
+                wrapper.appendChild(label);
+                wrapper.appendChild(input);
+                emailParamsEl.appendChild(wrapper);
+            });
+        }
+    }
+
+    emailTemplateSelect.addEventListener('change', updateEmailPreview);
+    updateEmailPreview();
 
     function updateTemplateUI() {
         const selectedId = templateSelect.value;

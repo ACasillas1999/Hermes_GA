@@ -8,6 +8,7 @@ use App\Http\Controllers\MessagingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ScheduledMessageController;
 use App\Http\Controllers\TemplateController;
+use App\Http\Controllers\EmailTemplateController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [AuthController::class, 'show'])->middleware('guest')->name('login');
@@ -30,6 +31,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/programados/{scheduledMessage}', [ScheduledMessageController::class, 'destroy'])->name('scheduled.destroy');
     Route::post('/templates/sync', [TemplateController::class, 'sync'])->name('templates.sync');
     Route::get('/templates', [TemplateController::class, 'list'])->name('templates.list');
+    
+    Route::get('/email-templates', [EmailTemplateController::class, 'index'])->name('email_templates.index');
+    Route::post('/email-templates/sync', [EmailTemplateController::class, 'sync'])->name('email_templates.sync');
+    Route::post('/email-templates', [EmailTemplateController::class, 'store'])->name('email_templates.store');
+    Route::delete('/email-templates/{emailTemplate}', [EmailTemplateController::class, 'destroy'])->name('email_templates.destroy');
+    
     Route::get('/historial', [MessageLogController::class, 'index'])->name('history.index');
 
     Route::get('/usuarios', [UserController::class, 'index'])->name('users.index');
@@ -38,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/usuarios/{user}', [UserController::class, 'destroy'])->name('users.destroy');
 
     Route::resource('listados', ListadoController::class);
+    Route::post('listados/{listado}/empleados/importar', [ListadoController::class, 'importCsv'])->name('listados.empleados.import');
     Route::post('listados/{listado}/empleados', [ListadoController::class, 'storeEmpleado'])->name('listados.empleados.store');
     Route::put('listados/{listado}/empleados/{empleado}', [ListadoController::class, 'updateEmpleado'])->name('listados.empleados.update');
     Route::delete('listados/{listado}/empleados/{empleado}', [ListadoController::class, 'destroyEmpleado'])->name('listados.empleados.destroy');

@@ -117,12 +117,14 @@ class ListadoController extends Controller
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:120'],
             'numero' => ['required', 'string', 'max:30'],
+            'correo' => ['nullable', 'email', 'max:150'],
         ]);
 
         Empleado::create([
             'Puesto' => $listado->nombre,
             'Nombre' => trim($data['nombre']),
             'Numero' => trim($data['numero']),
+            'Correo' => isset($data['correo']) ? trim($data['correo']) : null,
             'listado_id' => $listado->id,
         ]);
 
@@ -140,12 +142,14 @@ class ListadoController extends Controller
         $data = $request->validate([
             'nombre' => ['required', 'string', 'max:120'],
             'numero' => ['required', 'string', 'max:30'],
+            'correo' => ['nullable', 'email', 'max:150'],
         ]);
 
         $empleado->update([
             'Puesto' => $listado->nombre,
             'Nombre' => trim($data['nombre']),
             'Numero' => trim($data['numero']),
+            'Correo' => isset($data['correo']) ? trim($data['correo']) : null,
         ]);
 
         return redirect()
@@ -164,5 +168,76 @@ class ListadoController extends Controller
         return redirect()
             ->route('listados.show', $listado)
             ->with('status', 'Persona eliminada.');
+    }
+
+    public function importCsv(Request $request, Listado $listado)
+    {
+        $request->validate([
+            'csv_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
+        ]);
+
+        $file = $request->file('csv_file');
+        
+        $handle = fopen($file->getRealPath(), "r");
+        if ($handle !== FALSE) {
+            $header = fgetcsv($handle, 1000, ",");
+            
+            // Expected columns (flexible check could be done, assuming Name, Phone, Email)
+            // But we will just try to read rows assuming order or checking headers if needed.
+            // Let's assume order: Nombre, Numero, Correo OR we check column names
+            
+            $headerMap = [];
+            foreach ($header as $index => $colName) {
+                $colName = strtolower(trim($colName));
+                if (str_contains($colName, 'nombre') || str_contains($colName, 'name')) {
+                    $headerMap['nombre'] = $index;
+                } elseif (str_contains($colName, 'numero') || str_contains($colName, 'telefono') || str_contains($colName, 'phone')) {
+                    $headerMap['numero'] = $index;
+                } elseif (str_contains($colName, 'correo') || str_contains($colName, 'email')) {
+                    $headerMap['correo'] = $index;
+                }
+            }
+            
+            $count = 0;
+            DB::beginTransaction();
+            try {
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    // Try to map by header, otherwise use default order: 0=Nombre, 1=Numero, 2=Correo
+                    $nombre = isset($headerMap['nombre']) ? ($data[$headerMap['nombre']] ?? '') : ($data[0] ?? '');
+                    $numero = isset($headerMap['numero']) ? ($data[$headerMap['numero']] ?? '') : ($data[1] ?? '');
+                    $correo = isset($headerMap['correo']) ? ($data[$headerMap['correo']] ?? '') : ($data[2] ?? '');
+                    
+                    if (trim($nombre) === '' && trim($numero) === '' && trim($correo) === '') {
+                        continue;
+                    }
+
+                    Empleado::updateOrCreate(
+                        [
+                            'listado_id' => $listado->id,
+                            'Numero' => trim($numero),
+                        ],
+                        [
+                            'Puesto' => $listado->nombre,
+                            'Nombre' => trim($nombre),
+                            'Correo' => trim($correo) ?: null,
+                        ]
+                    );
+                    $count++;
+                }
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                fclose($handle);
+                return back()->withErrors(['csv_file' => 'Error al procesar el archivo CSV: ' . $e->getMessage()]);
+            }
+            
+            fclose($handle);
+            
+            return redirect()
+                ->route('listados.show', $listado)
+                ->with('status', "Se han importado $count contactos correctamente.");
+        }
+
+        return back()->withErrors(['csv_file' => 'No se pudo abrir el archivo CSV.']);
     }
 }
