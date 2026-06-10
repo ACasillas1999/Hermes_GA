@@ -119,27 +119,60 @@ class MessagingController extends Controller
                         'listado_id' => 'No hay empleados con correo electrónico en ese listado.',
                     ]);
             }
-            
-            $jobs = $empleadosConCorreo->map(function ($empleado) use ($template, $validated) {
-                return new SendEmailMessage(
-                    $empleado->ID,
-                    $empleado->Correo,
-                    $template->id,
-                    $validated['email_subject'] ?? null,
-                    $validated['email_from_address'] ?? null,
-                    $validated['email_from_name'] ?? null,
-                    $validated['email_params'] ?? []
-                );
-            })->all();
 
-            $batch = Bus::batch($jobs)
-                ->name('Envio correo: '.$template->name)
-                ->allowFailures()
-                ->dispatch();
+            $fromEmail   = $validated['email_from_address'] ?? config('mail.from.address');
+            $fromName    = $validated['email_from_name']    ?? config('mail.from.name');
+            $subject     = $validated['email_subject'] ?? $template->subject ?? 'Notificación';
+            $params      = $validated['email_params'] ?? [];
+
+            $html = $template->html_body;
+            foreach ($params as $key => $value) {
+                $html = preg_replace('/\{\{\{?\s*' . preg_quote($key, '/') . '\s*\}?\}\}/', htmlspecialchars((string) $value), $html);
+            }
+
+            $sent   = 0;
+            $failed = 0;
+
+            foreach ($empleadosConCorreo as $empleado) {
+                try {
+                    $response = \Illuminate\Support\Facades\Http::withToken(env('RESEND_API_KEY'))
+                        ->post('https://api.resend.com/emails', [
+                            'from'    => $fromName . ' <' . $fromEmail . '>',
+                            'to'      => [$empleado->Correo],
+                            'subject' => $subject,
+                            'html'    => $html,
+                        ]);
+
+                    if ($response->failed()) {
+                        throw new \Exception('Resend error: ' . $response->body());
+                    }
+
+                    \App\Models\MessageLog::create([
+                        'empleado_id'       => $empleado->ID,
+                        'template_name'     => $template->name . ' (Correo)',
+                        'template_language' => null,
+                        'status'            => 'sent',
+                        'response'          => $response->json(),
+                        'sent_at'           => now(),
+                    ]);
+
+                    $sent++;
+                } catch (\Throwable $e) {
+                    \App\Models\MessageLog::create([
+                        'empleado_id'       => $empleado->ID,
+                        'template_name'     => $template->name . ' (Correo)',
+                        'template_language' => null,
+                        'status'            => 'failed',
+                        'error'             => $e->getMessage(),
+                        'sent_at'           => now(),
+                    ]);
+                    $failed++;
+                }
+            }
 
             return redirect()
-                ->route('messaging.index', ['batch' => $batch->id])
-                ->with('status', 'Envio de correos en proceso. Puedes monitorear el progreso.');
+                ->route('messaging.index')
+                ->with('status', "Envío completado: {$sent} correos enviados, {$failed} fallidos.");
         }
 
         $template = WabaTemplate::findOrFail($validated['template_id']);
