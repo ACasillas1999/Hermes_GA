@@ -460,7 +460,7 @@
                     // Show info badge instead of input
                     const badge = document.createElement('div');
                     badge.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.25);border-radius:8px;font-size:13px;';
-                    badge.innerHTML = `<span style="color:var(--accent);">✓</span> <strong style="color:var(--accent);">{{${variable}}}</strong> <span style="color:var(--muted);">— Se rellena automáticamente con el nombre del contacto del listado</span>`;
+                    badge.innerHTML = '<span style="color:var(--accent);">✓</span> <strong style="color:var(--accent);">{{' + variable + '}}</strong> <span style="color:var(--muted);">— Se rellena automáticamente con el nombre del contacto del listado</span>';
                     emailParamsEl.appendChild(badge);
                 } else {
                     hasManualVars = true;
