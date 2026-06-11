@@ -135,12 +135,39 @@ class MessagingController extends Controller
 
             foreach ($empleadosConCorreo as $empleado) {
                 try {
+                    // Merge contact data so {{nombre}}, {{correo}}, etc. are replaced automatically
+                    $contactData = [
+                        'nombre'  => $empleado->Nombre,
+                        'Nombre'  => $empleado->Nombre,
+                        'name'    => $empleado->Nombre,
+                        'correo'  => $empleado->Correo,
+                        'Correo'  => $empleado->Correo,
+                        'email'   => $empleado->Correo,
+                        'numero'  => $empleado->Numero,
+                        'Numero'  => $empleado->Numero,
+                        'phone'   => $empleado->Numero,
+                        'puesto'  => $empleado->Puesto ?? '',
+                        'Puesto'  => $empleado->Puesto ?? '',
+                    ];
+
+                    // User-provided params override contact data
+                    $finalParams = array_merge($contactData, $params);
+
+                    $personalizedHtml = $html;
+                    foreach ($finalParams as $key => $value) {
+                        $personalizedHtml = preg_replace(
+                            '/\{\{\{?\s*' . preg_quote($key, '/') . '\s*\}?\}\}/',
+                            htmlspecialchars((string) $value),
+                            $personalizedHtml
+                        );
+                    }
+
                     $response = \Illuminate\Support\Facades\Http::withToken(env('RESEND_API_KEY'))
                         ->post('https://api.resend.com/emails', [
                             'from'    => $fromName . ' <' . $fromEmail . '>',
                             'to'      => [$empleado->Correo],
                             'subject' => $subject,
-                            'html'    => $html,
+                            'html'    => $personalizedHtml,
                         ]);
 
                     if ($response->failed()) {
