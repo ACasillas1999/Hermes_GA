@@ -450,22 +450,36 @@
         
         emailParamsEl.innerHTML = '';
         if (template.variables && template.variables.length > 0) {
+            // These are automatically filled from the contact list
+            const autoVars = ['nombre', 'Nombre', 'name', 'correo', 'Correo', 'email', 'numero', 'Numero', 'phone', 'puesto', 'Puesto'];
+            
+            let hasManualVars = false;
+            
             template.variables.forEach(variable => {
-                const wrapper = document.createElement('div');
-                const label = document.createElement('label');
-                label.textContent = 'Valor para {{' + variable + '}}';
-                label.style.marginBottom = '4px';
-                label.style.display = 'block';
+                if (autoVars.includes(variable)) {
+                    // Show info badge instead of input
+                    const badge = document.createElement('div');
+                    badge.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 12px;background:rgba(255,140,0,0.08);border:1px solid rgba(255,140,0,0.25);border-radius:8px;font-size:13px;';
+                    badge.innerHTML = `<span style="color:var(--accent);">✓</span> <strong style="color:var(--accent);">{{${variable}}}</strong> <span style="color:var(--muted);">— Se rellena automáticamente con el nombre del contacto del listado</span>`;
+                    emailParamsEl.appendChild(badge);
+                } else {
+                    hasManualVars = true;
+                    const wrapper = document.createElement('div');
+                    const label = document.createElement('label');
+                    label.textContent = 'Valor para {{' + variable + '}}';
+                    label.style.marginBottom = '4px';
+                    label.style.display = 'block';
 
-                const input = document.createElement('input');
-                input.type = 'text';
-                input.name = `email_params[${variable}]`;
-                input.placeholder = `Escribe el valor para ${variable}`;
-                input.required = true;
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.name = `email_params[${variable}]`;
+                    input.placeholder = `Escribe el valor para ${variable}`;
+                    input.required = true;
 
-                wrapper.appendChild(label);
-                wrapper.appendChild(input);
-                emailParamsEl.appendChild(wrapper);
+                    wrapper.appendChild(label);
+                    wrapper.appendChild(input);
+                    emailParamsEl.appendChild(wrapper);
+                }
             });
         }
     }
