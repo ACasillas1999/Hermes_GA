@@ -551,7 +551,7 @@
                 labelRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
 
                 const label = document.createElement('label');
-                label.textContent = `Parámetro de encabezado {{${i + 1}}}`;
+                label.textContent = 'Parámetro de encabezado ' + (i + 1) + ' ({' + '{' + (i + 1) + '}})';
                 label.style.margin = '0';
 
                 const insertBtn = document.createElement('button');
@@ -589,7 +589,7 @@
             labelRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
 
             const label = document.createElement('label');
-            label.textContent = `Parámetro {{${i + 1}}}`;
+            label.textContent = 'Parámetro ' + (i + 1) + ' ({' + '{' + (i + 1) + '}})';
             label.style.margin = '0';
 
             const insertBtn = document.createElement('button');
