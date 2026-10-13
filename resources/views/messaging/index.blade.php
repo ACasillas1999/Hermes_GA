@@ -539,19 +539,35 @@
         } else if (headerFormat === 'TEXT' && headerCount > 0) {
             for (let i = 0; i < headerCount; i += 1) {
                 const wrapper = document.createElement('div');
+                wrapper.style.marginBottom = '12px';
+
+                const labelRow = document.createElement('div');
+                labelRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
 
                 const label = document.createElement('label');
-                label.textContent = `Parametro header ${i + 1}`;
-                label.style.marginBottom = '4px';
-                label.style.display = 'block';
+                label.textContent = `Parámetro de encabezado {{${i + 1}}}`;
+                label.style.margin = '0';
+
+                const insertBtn = document.createElement('button');
+                insertBtn.type = 'button';
+                insertBtn.textContent = '+ Insertar @{{nombre}}';
+                insertBtn.style.cssText = 'padding: 2px 8px; font-size: 11px; border-radius: 4px; border: 1px solid var(--accent); background: rgba(255,140,0,0.1); color: var(--accent); cursor: pointer;';
+
+                labelRow.appendChild(label);
+                labelRow.appendChild(insertBtn);
 
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.name = `header_text_params[${i}]`;
-                input.placeholder = `Valor ${i + 1}`;
+                input.placeholder = `Texto fijo o @{{nombre}}`;
                 input.required = true;
 
-                wrapper.appendChild(label);
+                insertBtn.addEventListener('click', () => {
+                    input.value = '@{{nombre}}';
+                    input.focus();
+                });
+
+                wrapper.appendChild(labelRow);
                 wrapper.appendChild(input);
                 headerParamsEl.appendChild(wrapper);
             }
@@ -561,20 +577,42 @@
 
         for (let i = 0; i < count; i += 1) {
             const wrapper = document.createElement('div');
+            wrapper.style.marginBottom = '12px';
+
+            const labelRow = document.createElement('div');
+            labelRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;';
 
             const label = document.createElement('label');
-            label.textContent = `Parametro ${i + 1}`;
-            label.style.marginBottom = '4px';
-            label.style.display = 'block';
+            label.textContent = `Parámetro {{${i + 1}}}`;
+            label.style.margin = '0';
+
+            const insertBtn = document.createElement('button');
+            insertBtn.type = 'button';
+            insertBtn.textContent = '+ Insertar @{{nombre}}';
+            insertBtn.style.cssText = 'padding: 2px 8px; font-size: 11px; border-radius: 4px; border: 1px solid var(--accent); background: rgba(255,140,0,0.1); color: var(--accent); cursor: pointer;';
+
+            labelRow.appendChild(label);
+            labelRow.appendChild(insertBtn);
 
             const input = document.createElement('input');
             input.type = 'text';
             input.name = `body_params[${i}]`;
-            input.placeholder = `Valor ${i + 1}`;
+            input.placeholder = `Texto fijo, @{{nombre}} o @{{1}}`;
             input.required = true;
 
-            wrapper.appendChild(label);
+            insertBtn.addEventListener('click', () => {
+                input.value = '@{{nombre}}';
+                input.focus();
+            });
+
+            const hint = document.createElement('div');
+            hint.className = 'hint';
+            hint.style.cssText = 'font-size: 12px; margin-top: 4px; color: var(--muted);';
+            hint.innerHTML = 'Tip: Puedes escribir <code>@{{nombre}}</code> o <code>@{{1}}</code> para enviar el nombre del participante.';
+
+            wrapper.appendChild(labelRow);
             wrapper.appendChild(input);
+            wrapper.appendChild(hint);
             paramsEl.appendChild(wrapper);
         }
     }

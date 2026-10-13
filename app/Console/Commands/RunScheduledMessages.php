@@ -108,7 +108,7 @@ class RunScheduledMessages extends Command
 
         $empleados = Empleado::query()
             ->where('listado_id', $scheduled->listado_id)
-            ->get(['ID', 'Numero']);
+            ->get(['ID', 'Nombre', 'Numero', 'Correo', 'Puesto']);
 
         if ($empleados->isEmpty()) {
             $scheduled->update([
@@ -119,43 +119,48 @@ class RunScheduledMessages extends Command
             return;
         }
 
-        $components = [];
+        $scheduledId = $scheduled->id;
+        $jobs = $empleados->map(function ($empleado) use ($template, $headerFormat, $headerRequiredCount, $scheduled, $requiredCount, $bodyParams, $scheduledId) {
+            $components = [];
 
-        if ($template->headerRequiresMedia()) {
-            $mediaType = strtolower($headerFormat);
-            $components[] = [
-                'type' => 'header',
-                'parameters' => [
-                    [
-                        'type' => $mediaType,
-                        $mediaType => [
-                            'link' => $scheduled->header_media_url,
+            if ($template->headerRequiresMedia()) {
+                $mediaType = strtolower($headerFormat);
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => [
+                        [
+                            'type' => $mediaType,
+                            $mediaType => [
+                                'link' => $scheduled->header_media_url,
+                            ],
                         ],
                     ],
-                ],
-            ];
-        } elseif ($headerFormat === 'TEXT' && $headerRequiredCount > 0) {
-            $components[] = [
-                'type' => 'header',
-                'parameters' => array_map(
-                    fn ($value) => ['type' => 'text', 'text' => $value],
-                    array_slice($headerTextParams, 0, $headerRequiredCount)
-                ),
-            ];
-        }
+                ];
+            } elseif ($headerFormat === 'TEXT' && $headerRequiredCount > 0) {
+                $headerTextParams = array_values(array_filter(
+                    $scheduled->header_text_params ?? [],
+                    fn ($value) => $value !== null && $value !== ''
+                ));
 
-        if ($requiredCount > 0) {
-            $components[] = [
-                'type' => 'body',
-                'parameters' => array_map(
-                    fn ($value) => ['type' => 'text', 'text' => $value],
-                    array_slice($bodyParams, 0, $requiredCount)
-                ),
-            ];
-        }
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => array_map(
+                        fn ($value) => ['type' => 'text', 'text' => $this->replaceContactVariables($value, $empleado)],
+                        array_slice($headerTextParams, 0, $headerRequiredCount)
+                    ),
+                ];
+            }
 
-        $scheduledId = $scheduled->id;
-        $jobs = $empleados->map(function ($empleado) use ($template, $components, $scheduledId) {
+            if ($requiredCount > 0) {
+                $components[] = [
+                    'type' => 'body',
+                    'parameters' => array_map(
+                        fn ($value) => ['type' => 'text', 'text' => $this->replaceContactVariables($value, $empleado)],
+                        array_slice($bodyParams, 0, $requiredCount)
+                    ),
+                ];
+            }
+
             return new SendTemplateMessage(
                 $empleado->ID,
                 $empleado->Numero,
@@ -223,5 +228,27 @@ class RunScheduledMessages extends Command
             'status' => 'queued',
             'batch_id' => $batch->id,
         ]);
+    }
+
+    private function replaceContactVariables(string $text, Empleado $empleado): string
+    {
+        $vars = [
+            '1'        => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'nombre'   => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'name'     => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'puesto'   => $empleado->Puesto ?? '',
+            'numero'   => $empleado->Numero ?? '',
+            'telefono' => $empleado->Numero ?? '',
+            'phone'    => $empleado->Numero ?? '',
+            'correo'   => $empleado->Correo ?? '',
+            'email'    => $empleado->Correo ?? '',
+        ];
+
+        foreach ($vars as $key => $value) {
+            $text = preg_replace('/\{\{\{?\s*' . preg_quote($key, '/') . '\s*\}?\}\}/i', (string) $value, $text);
+        }
+
+        $trimmed = trim($text);
+        return $trimmed !== '' ? $trimmed : ' ';
     }
 }

@@ -98,7 +98,7 @@ class MessagingController extends Controller
 
         $empleados = Empleado::query()
             ->where('listado_id', $listado->id)
-            ->get(['ID', 'Nombre', 'Numero', 'Correo']);
+            ->get(['ID', 'Nombre', 'Numero', 'Correo', 'Puesto']);
 
         if ($empleados->isEmpty()) {
             return back()
@@ -243,47 +243,47 @@ class MessagingController extends Controller
                 ]);
         }
 
-        $components = [];
+        $jobs = $empleados->map(function ($empleado) use ($template, $headerFormat, $headerRequiredCount, $validated, $requiredCount, $bodyParams) {
+            $components = [];
 
-        if ($template->headerRequiresMedia()) {
-            $mediaType = strtolower($headerFormat);
-            $components[] = [
-                'type' => 'header',
-                'parameters' => [
-                    [
-                        'type' => $mediaType,
-                        $mediaType => [
-                            'link' => $validated['header_media_url'],
+            if ($template->headerRequiresMedia()) {
+                $mediaType = strtolower($headerFormat);
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => [
+                        [
+                            'type' => $mediaType,
+                            $mediaType => [
+                                'link' => $validated['header_media_url'],
+                            ],
                         ],
                     ],
-                ],
-            ];
-        } elseif ($headerFormat === 'TEXT' && $headerRequiredCount > 0) {
-            $headerTextParams = array_values(array_filter(
-                $validated['header_text_params'] ?? [],
-                fn ($value) => $value !== null && $value !== ''
-            ));
+                ];
+            } elseif ($headerFormat === 'TEXT' && $headerRequiredCount > 0) {
+                $headerTextParams = array_values(array_filter(
+                    $validated['header_text_params'] ?? [],
+                    fn ($value) => $value !== null && $value !== ''
+                ));
 
-            $components[] = [
-                'type' => 'header',
-                'parameters' => array_map(
-                    fn ($value) => ['type' => 'text', 'text' => $value],
-                    array_slice($headerTextParams, 0, $headerRequiredCount)
-                ),
-            ];
-        }
+                $components[] = [
+                    'type' => 'header',
+                    'parameters' => array_map(
+                        fn ($value) => ['type' => 'text', 'text' => $this->replaceContactVariables($value, $empleado)],
+                        array_slice($headerTextParams, 0, $headerRequiredCount)
+                    ),
+                ];
+            }
 
-        if ($requiredCount > 0) {
-            $components[] = [
-                'type' => 'body',
-                'parameters' => array_map(
-                    fn ($value) => ['type' => 'text', 'text' => $value],
-                    array_slice($bodyParams, 0, $requiredCount)
-                ),
-            ];
-        }
+            if ($requiredCount > 0) {
+                $components[] = [
+                    'type' => 'body',
+                    'parameters' => array_map(
+                        fn ($value) => ['type' => 'text', 'text' => $this->replaceContactVariables($value, $empleado)],
+                        array_slice($bodyParams, 0, $requiredCount)
+                    ),
+                ];
+            }
 
-        $jobs = $empleados->map(function ($empleado) use ($template, $components) {
             return new SendTemplateMessage(
                 $empleado->ID,
                 $empleado->Numero,
@@ -322,5 +322,27 @@ class MessagingController extends Controller
             'progress' => $batch->progress(),
             'finished' => (bool) $batch->finishedAt,
         ]);
+    }
+
+    protected function replaceContactVariables(string $text, Empleado $empleado): string
+    {
+        $vars = [
+            '1'        => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'nombre'   => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'name'     => !empty($empleado->Nombre) ? $empleado->Nombre : 'Participante',
+            'puesto'   => $empleado->Puesto ?? '',
+            'numero'   => $empleado->Numero ?? '',
+            'telefono' => $empleado->Numero ?? '',
+            'phone'    => $empleado->Numero ?? '',
+            'correo'   => $empleado->Correo ?? '',
+            'email'    => $empleado->Correo ?? '',
+        ];
+
+        foreach ($vars as $key => $value) {
+            $text = preg_replace('/\{\{\{?\s*' . preg_quote($key, '/') . '\s*\}?\}\}/i', (string) $value, $text);
+        }
+
+        $trimmed = trim($text);
+        return $trimmed !== '' ? $trimmed : ' ';
     }
 }
